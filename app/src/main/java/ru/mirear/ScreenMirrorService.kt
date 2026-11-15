@@ -18,12 +18,19 @@ import android.os.Looper
 import android.view.Surface
 
 class ScreenMirrorService : Service() {
+    private val serviceInstanceId = java.util.UUID.randomUUID().toString().take(8)
     private var projection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onCreate() {
+        super.onCreate()
+        Diagnostics.log(this, "SERVICE_ON_CREATE id=$serviceInstanceId")
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Diagnostics.log(this, "SERVICE_ON_START_COMMAND id=$serviceInstanceId startId=$startId action=${intent?.action} flags=$flags hasCaptureData=${intent?.hasExtra(EXTRA_CAPTURE_DATA)} hasSurface=${intent?.hasExtra(EXTRA_SURFACE)}")
         if (intent?.action == ACTION_STOP) {
             releaseAll()
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -154,7 +161,13 @@ class ScreenMirrorService : Service() {
         projection = null
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        Diagnostics.log(this, "SERVICE_ON_TASK_REMOVED id=$serviceInstanceId")
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onDestroy() {
+        Diagnostics.log(this, "SERVICE_ON_DESTROY id=$serviceInstanceId")
         releaseAll()
         super.onDestroy()
     }
