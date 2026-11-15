@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.util.DisplayMetrics
 import android.view.Gravity
 import android.view.Surface
 import android.view.SurfaceHolder
@@ -80,12 +81,17 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
         val mode = rearDisplay?.mode
         val width = mode?.physicalWidth?.takeIf { it > 0 } ?: window.decorView.width.coerceAtLeast(1)
         val height = mode?.physicalHeight?.takeIf { it > 0 } ?: window.decorView.height.coerceAtLeast(1)
+        val rearMetrics = DisplayMetrics()
+        rearDisplay?.getRealMetrics(rearMetrics)
+        val densityDpi = rearMetrics.densityDpi.takeIf { it > 0 } ?: resources.displayMetrics.densityDpi
+        holderSizeHint(surface, width, height)
         val serviceIntent = Intent(this, ScreenMirrorService::class.java).apply {
             putExtra(ScreenMirrorService.EXTRA_CAPTURE_CODE, captureCode)
             putExtra(ScreenMirrorService.EXTRA_CAPTURE_DATA, captureData)
             putExtra(ScreenMirrorService.EXTRA_SURFACE, surface)
             putExtra(ScreenMirrorService.EXTRA_WIDTH, width)
             putExtra(ScreenMirrorService.EXTRA_HEIGHT, height)
+            putExtra(ScreenMirrorService.EXTRA_DENSITY_DPI, densityDpi)
         }
         try {
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(serviceIntent) else startService(serviceIntent)
@@ -95,6 +101,12 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
             message.text = "MIRROR ERROR\n\n${error.javaClass.simpleName}: ${error.message}"
             message.setTextColor(Color.RED)
         }
+    }
+
+    private fun holderSizeHint(surface: Surface, width: Int, height: Int) {
+        try {
+            surface.setFrameRate(30f, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE)
+        } catch (_: Exception) { }
     }
 
     private fun stopMirrorService() {
