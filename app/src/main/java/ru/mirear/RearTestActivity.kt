@@ -53,6 +53,7 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
         window.navigationBarColor = Color.BLACK
 
         resolveRearResolution()
+        Diagnostics.log(this, "REAR_ACTIVITY_CREATED rearResolution=${mirrorWidth}x${mirrorHeight} displayId=${window.decorView.display?.displayId} mode=${window.decorView.display?.mode}")
 
         val root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
         surfaceView = SurfaceView(this).apply {
@@ -91,18 +92,22 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
             mirrorWidth = w
             mirrorHeight = h
         }
+        Diagnostics.log(this, "REAR_DISPLAY_MODE physical=${mirrorWidth}x${mirrorHeight} densityDpi=${resources.displayMetrics.densityDpi} refreshRate=${display?.refreshRate}")
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
+        Diagnostics.log(this, "SURFACE_CREATED valid=${holder.surface.isValid} view=${surfaceView.width}x${surfaceView.height} buffer=${mirrorWidth}x${mirrorHeight}")
         holder.setFixedSize(mirrorWidth, mirrorHeight)
         startMirror(holder.surface)
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+        Diagnostics.log(this, "SURFACE_CHANGED format=$format view=${width}x${height} buffer=${mirrorWidth}x${mirrorHeight}")
         if (!serviceStarted) startMirror(holder.surface)
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
+        Diagnostics.log(this, "SURFACE_DESTROYED")
         stopMirrorService()
     }
 
@@ -131,6 +136,8 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
             message.text = "MiRear\n\nSTARTING MIRROR…\n\n${mirrorWidth} × ${mirrorHeight}"
             message.visibility = android.view.View.VISIBLE
         } catch (error: Exception) {
+            Diagnostics.log(this, "START_MIRROR_EXCEPTION ${error.javaClass.name}: ${error.message}")
+            Diagnostics.log(this, android.util.Log.getStackTraceString(error))
             message.text = "MIRROR ERROR\n\n${error.javaClass.simpleName}: ${error.message}"
             message.setTextColor(Color.RED)
             message.visibility = android.view.View.VISIBLE
