@@ -56,9 +56,12 @@ class ScreenMirrorService : Service() {
         }
 
         try {
+            Diagnostics.log(this, "SERVICE_START request: width=$width height=$height densityDpi=$densityDpi surfaceValid=${surface.isValid} sdk=${Build.VERSION.SDK_INT}")
             startAsForeground()
+            Diagnostics.log(this, "FOREGROUND_STARTED type=MEDIA_PROJECTION")
             val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             projection = manager.getMediaProjection(resultCode, captureData)
+            Diagnostics.log(this, "MEDIAPROJECTION_CREATED resultCode=$resultCode")
             val activeProjection = projection ?: error("Android did not create MediaProjection")
 
             activeProjection.registerCallback(object : MediaProjection.Callback() {
@@ -78,6 +81,7 @@ class ScreenMirrorService : Service() {
             // This does not request a refresh-rate change for the primary display.
             if (Build.VERSION.SDK_INT >= 30) {
                 surface.setFrameRate(60f, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE)
+                Diagnostics.log(this, "SURFACE_FRAME_RATE_HINT=60 FIXED_SOURCE")
             }
 
             virtualDisplay = activeProjection.createVirtualDisplay(
@@ -91,8 +95,11 @@ class ScreenMirrorService : Service() {
                 Handler(Looper.getMainLooper())
             ) ?: error("Android failed to create the mirror virtual display")
 
+            Diagnostics.log(this, "VIRTUAL_DISPLAY_CREATED name=MiRear-Mirror width=$width height=$height densityDpi=$densityDpi flags=AUTO_MIRROR")
             report("RUNNING", "Mirroring active: $width × $height.")
         } catch (error: Exception) {
+            Diagnostics.log(this, "SERVICE_EXCEPTION ${error.javaClass.name}: ${error.message}")
+            Diagnostics.log(this, android.util.Log.getStackTraceString(error))
             report("ERROR", "${error.javaClass.simpleName}: ${error.message ?: "Unknown error"}")
             releaseAll()
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -140,6 +147,7 @@ class ScreenMirrorService : Service() {
     }
 
     private fun releaseAll() {
+        Diagnostics.log(this, "RELEASE_ALL virtualDisplay=${virtualDisplay != null} projection=${projection != null}")
         virtualDisplay?.release()
         virtualDisplay = null
         projection?.stop()
