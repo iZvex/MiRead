@@ -2,7 +2,7 @@ name: Build MiRear APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, experimental/texture-mirror ]
   workflow_dispatch:
 
 permissions:
