@@ -36,7 +36,7 @@ class RearTestActivity : Activity(), TextureView.SurfaceTextureListener {
             if (intent?.action != ScreenMirrorService.ACTION_STATUS) return
             val state = intent.getStringExtra(ScreenMirrorService.EXTRA_STATE) ?: "INFO"
             val detail = intent.getStringExtra(ScreenMirrorService.EXTRA_DETAIL) ?: ""
-            message.text = "MiRear\\n\\n$state\\n\\n$detail"
+            message.text = "MiRear\n\n$state\n\n$detail"
             message.setTextColor(if (state == "ERROR") Color.RED else Color.CYAN)
 
             // Do not keep a full-screen translucent overlay above the mirror.
@@ -60,13 +60,12 @@ class RearTestActivity : Activity(), TextureView.SurfaceTextureListener {
         val root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
         textureView = TextureView(this).apply {
             surfaceTextureListener = this@RearTestActivity
-            isOpaque = false
         }
         root.addView(textureView, FrameLayout.LayoutParams(-1, -1))
 
         message = TextView(this).apply {
-            text = if (captureData == null) "MiRear\\n\\nREAR DISPLAY TEST"
-                else "MiRear\\n\\nPREPARING MIRROR…"
+            text = if (captureData == null) "MiRear\n\nREAR DISPLAY TEST"
+                else "MiRear\n\nPREPARING MIRROR…"
             textSize = 15f
             gravity = Gravity.CENTER
             setTextColor(Color.CYAN)
@@ -128,10 +127,10 @@ class RearTestActivity : Activity(), TextureView.SurfaceTextureListener {
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(serviceIntent)
             else startService(serviceIntent)
             serviceStarted = true
-            message.text = "MiRear\\n\\nSTARTING MIRROR…\\n\\n${VIRTUAL_WIDTH} × ${VIRTUAL_HEIGHT}"
+            message.text = "MiRear\n\nSTARTING MIRROR…\n\n${VIRTUAL_WIDTH} × ${VIRTUAL_HEIGHT}"
             message.visibility = android.view.View.VISIBLE
         } catch (error: Exception) {
-            message.text = "MIRROR ERROR\\n\\n${error.javaClass.simpleName}: ${error.message}"
+            message.text = "MIRROR ERROR\n\n${error.javaClass.simpleName}: ${error.message}"
             message.setTextColor(Color.RED)
             message.visibility = android.view.View.VISIBLE
         }
