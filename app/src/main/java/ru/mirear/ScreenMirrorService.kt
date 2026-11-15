@@ -18,6 +18,7 @@ import android.os.Binder
 import android.os.Looper
 import android.os.Debug
 import android.os.Process
+import android.os.SystemClock
 import android.view.Surface
 
 class ScreenMirrorService : Service() {
