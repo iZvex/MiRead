@@ -41,8 +41,20 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
         }
     }
 
+    private val activityInstanceId = java.util.UUID.randomUUID().toString().take(8)
+    private val displayListener = object : android.hardware.display.DisplayManager.DisplayListener {
+        override fun onDisplayAdded(displayId: Int) { Diagnostics.log(this@RearTestActivity, "DISPLAY_ADDED activity=$activityInstanceId displayId=$displayId") }
+        override fun onDisplayRemoved(displayId: Int) { Diagnostics.log(this@RearTestActivity, "DISPLAY_REMOVED activity=$activityInstanceId displayId=$displayId") }
+        override fun onDisplayChanged(displayId: Int) {
+            val manager = getSystemService(DISPLAY_SERVICE) as android.hardware.display.DisplayManager
+            val d = manager.getDisplay(displayId)
+            Diagnostics.log(this@RearTestActivity, "DISPLAY_CHANGED activity=$activityInstanceId displayId=$displayId mode=${d?.mode} refresh=${d?.refreshRate} state=${d?.state}")
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Diagnostics.log(this, "ACTIVITY_ON_CREATE id=$activityInstanceId taskId=$taskId savedState=${savedInstanceState != null} flags=0x${Integer.toHexString(intent.flags)}")
         captureCode = intent.getIntExtra(ScreenMirrorService.EXTRA_CAPTURE_CODE, 0)
         @Suppress("DEPRECATION")
         captureData = if (Build.VERSION.SDK_INT >= 33)
@@ -81,7 +93,16 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
         }
         receiverRegistered = true
         setContentView(root)
+        (getSystemService(DISPLAY_SERVICE) as android.hardware.display.DisplayManager).registerDisplayListener(displayListener, android.os.Handler(mainLooper))
     }
+
+    override fun onStart() { super.onStart(); Diagnostics.log(this, "ACTIVITY_ON_START id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations") }
+    override fun onResume() { super.onResume(); Diagnostics.log(this, "ACTIVITY_ON_RESUME id=$activityInstanceId displayId=${window.decorView.display?.displayId} serviceStarted=$serviceStarted surfaceValid=${::surfaceView.isInitialized && surfaceView.holder.surface.isValid}") }
+    override fun onPause() { Diagnostics.log(this, "ACTIVITY_ON_PAUSE id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations"); super.onPause() }
+    override fun onStop() { Diagnostics.log(this, "ACTIVITY_ON_STOP id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations"); super.onStop() }
+    override fun onRestart() { super.onRestart(); Diagnostics.log(this, "ACTIVITY_ON_RESTART id=$activityInstanceId") }
+    override fun onNewIntent(intent: Intent?) { super.onNewIntent(intent); Diagnostics.log(this, "ACTIVITY_ON_NEW_INTENT id=$activityInstanceId flags=${intent?.flags}") }
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) { super.onConfigurationChanged(newConfig); Diagnostics.log(this, "ACTIVITY_CONFIGURATION_CHANGED id=$activityInstanceId orientation=${newConfig.orientation} densityDpi=${newConfig.densityDpi} screen=${newConfig.screenWidthDp}x${newConfig.screenHeightDp}") }
 
     private fun resolveRearResolution() {
         val display = window.decorView.display
@@ -96,18 +117,18 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
-        Diagnostics.log(this, "SURFACE_CREATED valid=${holder.surface.isValid} view=${surfaceView.width}x${surfaceView.height} buffer=${mirrorWidth}x${mirrorHeight}")
+        Diagnostics.log(this, "SURFACE_CREATED activity=$activityInstanceId valid=${holder.surface.isValid} view=${surfaceView.width}x${surfaceView.height} buffer=${mirrorWidth}x${mirrorHeight}")
         holder.setFixedSize(mirrorWidth, mirrorHeight)
         startMirror(holder.surface)
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-        Diagnostics.log(this, "SURFACE_CHANGED format=$format view=${width}x${height} buffer=${mirrorWidth}x${mirrorHeight}")
+        Diagnostics.log(this, "SURFACE_CHANGED activity=$activityInstanceId format=$format view=${width}x${height} buffer=${mirrorWidth}x${mirrorHeight}")
         if (!serviceStarted) startMirror(holder.surface)
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
-        Diagnostics.log(this, "SURFACE_DESTROYED")
+        Diagnostics.log(this, "SURFACE_DESTROYED activity=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations")
         stopMirrorService()
     }
 
@@ -151,6 +172,8 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
     }
 
     override fun onDestroy() {
+        Diagnostics.log(this, "ACTIVITY_ON_DESTROY id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations serviceStarted=$serviceStarted")
+        (getSystemService(DISPLAY_SERVICE) as android.hardware.display.DisplayManager).unregisterDisplayListener(displayListener)
         if (receiverRegistered) unregisterReceiver(statusReceiver)
         stopMirrorService()
         super.onDestroy()
