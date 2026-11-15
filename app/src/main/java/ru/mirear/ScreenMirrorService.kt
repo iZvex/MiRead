@@ -16,6 +16,8 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Binder
 import android.os.Looper
+import android.os.Debug
+import android.os.Process
 import android.view.Surface
 
 class ScreenMirrorService : Service() {
@@ -24,6 +26,28 @@ class ScreenMirrorService : Service() {
     private var projection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
     private var currentSurface: Surface? = null
+    private val monitorHandler = Handler(Looper.getMainLooper())
+    private var monitorStartedAt = 0L
+    private var lastCpuTimeMs = 0L
+    private var lastSampleAt = 0L
+    private val performanceMonitor = object : Runnable {
+        override fun run() {
+            if (projection == null || virtualDisplay == null) return
+            val now = SystemClock.elapsedRealtime()
+            val cpuNow = Process.getElapsedCpuTime()
+            val interval = (now - lastSampleAt).coerceAtLeast(1L)
+            val cpuDelta = (cpuNow - lastCpuTimeMs).coerceAtLeast(0L)
+            val cpuPercent = cpuDelta * 100.0 / interval
+            val runtime = Runtime.getRuntime()
+            val usedHeapMb = (runtime.totalMemory() - runtime.freeMemory()) / (1024.0 * 1024.0)
+            val maxHeapMb = runtime.maxMemory() / (1024.0 * 1024.0)
+            val pssMb = Debug.getPss() / 1024.0
+            Diagnostics.log(this@ScreenMirrorService, "PERF_SAMPLE uptimeMs=" + (now - monitorStartedAt) + " processCpuPercent=" + cpuPercent.toInt() + " pssMb=" + pssMb.toInt() + " heapUsedMb=" + usedHeapMb.toInt() + " heapMaxMb=" + maxHeapMb.toInt() + " virtualDisplayActive=" + (virtualDisplay != null) + " surfaceValid=" + (currentSurface?.isValid == true))
+            lastCpuTimeMs = cpuNow
+            lastSampleAt = now
+            monitorHandler.postDelayed(this, 1000L)
+        }
+    }
 
     inner class LocalBinder : Binder() {
         fun service(): ScreenMirrorService = this@ScreenMirrorService
@@ -39,6 +63,7 @@ class ScreenMirrorService : Service() {
             return
         }
         currentSurface = surface
+        Diagnostics.log(this, "SURFACE_ATTACH_REQUEST valid=" + surface.isValid + " displayReady=" + (virtualDisplay != null))
         val display = virtualDisplay
         if (display == null) {
             Diagnostics.log(this, "SURFACE_ATTACH_WAITING_FOR_VIRTUAL_DISPLAY")
@@ -136,6 +161,11 @@ class ScreenMirrorService : Service() {
             ) ?: error("Android failed to create the mirror virtual display")
 
             Diagnostics.log(this, "VIRTUAL_DISPLAY_CREATED name=MiRear-Mirror width=$width height=$height densityDpi=$densityDpi surface=null")
+            monitorStartedAt = SystemClock.elapsedRealtime()
+            lastSampleAt = monitorStartedAt
+            lastCpuTimeMs = Process.getElapsedCpuTime()
+            monitorHandler.removeCallbacks(performanceMonitor)
+            monitorHandler.postDelayed(performanceMonitor, 1000L)
             currentSurface?.takeIf { it.isValid }?.let { attachSurface(it) }
             report("RUNNING", "Capture active. Waiting for rear surface.")
         } catch (error: Exception) {
@@ -179,6 +209,7 @@ class ScreenMirrorService : Service() {
     }
 
     private fun releaseAll() {
+        monitorHandler.removeCallbacks(performanceMonitor)
         Diagnostics.log(this, "RELEASE_ALL virtualDisplay=${virtualDisplay != null} projection=${projection != null} surface=${currentSurface != null}")
         virtualDisplay?.setSurface(null)
         virtualDisplay?.release()
