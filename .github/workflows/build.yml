@@ -45,18 +45,37 @@ jobs:
           MIREAR_KEY_ALIAS: ${{ secrets.MIREAR_KEY_ALIAS }}
           MIREAR_KEY_PASSWORD: ${{ secrets.MIREAR_KEY_PASSWORD }}
         run: |
+          set -euo pipefail
           APK="app/build/outputs/apk/debug/app-debug.apk"
           if [ -n "$MIREAR_KEYSTORE_BASE64" ]; then
-            echo "$MIREAR_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/mirear-release.jks"
+            for name in MIREAR_STORE_PASSWORD MIREAR_KEY_ALIAS MIREAR_KEY_PASSWORD; do
+              if [ -z "${!name:-}" ]; then
+                echo "::error::Signing secret $name is empty. Check GitHub Actions secrets."
+                exit 1
+              fi
+            done
+
+            KEYSTORE="$RUNNER_TEMP/mirear-release.jks"
+            printf '%s' "$MIREAR_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+            if [ ! -s "$KEYSTORE" ]; then
+              echo "::error::Decoded keystore is empty. Recreate MIREAR_KEYSTORE_BASE64 from the original .jks/.keystore file."
+              exit 1
+            fi
+
+            if ! keytool -list -keystore "$KEYSTORE" -storepass "$MIREAR_STORE_PASSWORD" -alias "$MIREAR_KEY_ALIAS" >/dev/null 2>&1; then
+              echo "::error::Keystore cannot be opened or the alias/password is incorrect. Recheck the Base64 keystore, store password and alias secrets."
+              exit 1
+            fi
+
             "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign \
-              --ks "$RUNNER_TEMP/mirear-release.jks" \
+              --ks "$KEYSTORE" \
               --ks-key-alias "$MIREAR_KEY_ALIAS" \
               --ks-pass env:MIREAR_STORE_PASSWORD \
               --key-pass env:MIREAR_KEY_PASSWORD \
               --out "$RUNNER_TEMP/MiRear-debug-signed.apk" "$APK"
             mv "$RUNNER_TEMP/MiRear-debug-signed.apk" "$APK"
             "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$APK"
-            rm -f "$RUNNER_TEMP/mirear-release.jks"
+            rm -f "$KEYSTORE"
             echo "APK signed with the persistent MiRear key."
           else
             echo "::warning::Persistent signing is not configured. APK updates may require uninstalling the previous build."
