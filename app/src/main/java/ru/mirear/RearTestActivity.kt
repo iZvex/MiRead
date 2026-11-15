@@ -107,7 +107,7 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
 
     private fun holderSizeHint(surface: Surface) {
         try {
-            surface.setFrameRate(30f, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE)
+            surface.setFrameRate(15f, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE)
         } catch (_: Exception) { }
     }
 
