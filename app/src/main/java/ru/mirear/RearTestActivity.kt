@@ -86,7 +86,6 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
         rearDisplay?.getRealMetrics(rearMetrics)
         val densityDpi = rearMetrics.densityDpi.takeIf { it > 0 } ?: resources.displayMetrics.densityDpi
         holder.setFixedSize(width, height)
-        holderSizeHint(surface)
         val serviceIntent = Intent(this, ScreenMirrorService::class.java).apply {
             putExtra(ScreenMirrorService.EXTRA_CAPTURE_CODE, captureCode)
             putExtra(ScreenMirrorService.EXTRA_CAPTURE_DATA, captureData)
@@ -105,11 +104,6 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
         }
     }
 
-    private fun holderSizeHint(surface: Surface) {
-        try {
-            surface.setFrameRate(15f, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE)
-        } catch (_: Exception) { }
-    }
 
     private fun stopMirrorService() {
         if (!serviceStarted) return
