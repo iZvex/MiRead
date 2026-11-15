@@ -134,6 +134,7 @@ class ScreenMirrorService : Service() {
             ) ?: error("Android failed to create the mirror virtual display")
 
             Diagnostics.log(this, "VIRTUAL_DISPLAY_CREATED name=MiRear-Mirror width=$width height=$height densityDpi=$densityDpi surface=null")
+            currentSurface?.takeIf { it.isValid }?.let { attachSurface(it) }
             report("RUNNING", "Capture active. Waiting for rear surface.")
         } catch (error: Exception) {
             Diagnostics.log(this, "SERVICE_EXCEPTION ${error.javaClass.name}: ${error.message}")
