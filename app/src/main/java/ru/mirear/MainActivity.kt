@@ -19,6 +19,8 @@ class MainActivity : Activity() {
     private var frameSamples = 0
     private var jankyFrames = 0
     private var maxFrameMs = 0.0
+    private var totalFrameMs = 0.0
+    private var verySlowFrames = 0
     private var pendingCaptureCheck = false
     private val mirrorServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
@@ -207,13 +209,18 @@ class MainActivity : Activity() {
             val frameBudgetMs = 1000.0 / refresh
             frameSamples++
             if (totalMs > frameBudgetMs * 1.5) jankyFrames++
+            if (totalMs > frameBudgetMs * 3.0) verySlowFrames++
+            totalFrameMs += totalMs
             if (totalMs > maxFrameMs) maxFrameMs = totalMs
             if (frameSamples >= 120) {
+                val averageFrameMs = totalFrameMs / frameSamples
                 Diagnostics.log(this,
-                    "MAIN_WINDOW_FRAMES samples=$frameSamples slowFrames=$jankyFrames refreshRateHz=$refresh " +
-                        "frameBudgetMs=$frameBudgetMs maxFrameMs=$maxFrameMs")
+                    "MAIN_WINDOW_FRAMES samples=$frameSamples slowFrames=$jankyFrames verySlowFrames=$verySlowFrames " +
+                        "refreshRateHz=$refresh frameBudgetMs=$frameBudgetMs averageFrameMs=$averageFrameMs maxFrameMs=$maxFrameMs")
                 frameSamples = 0
                 jankyFrames = 0
+                verySlowFrames = 0
+                totalFrameMs = 0.0
                 maxFrameMs = 0.0
             }
         }
