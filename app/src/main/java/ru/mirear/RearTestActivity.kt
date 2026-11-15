@@ -120,7 +120,6 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
     }
     override fun onResume() { super.onResume(); Diagnostics.log(this, "ACTIVITY_ON_RESUME id=$activityInstanceId displayId=${window.decorView.display?.displayId} serviceStarted=$serviceStarted surfaceValid=${::surfaceView.isInitialized && surfaceView.holder.surface.isValid}") }
     override fun onPause() { Diagnostics.log(this, "ACTIVITY_ON_PAUSE id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations"); super.onPause() }
-    override fun onStop() { Diagnostics.log(this, "ACTIVITY_ON_STOP id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations"); super.onStop() }
     override fun onRestart() { super.onRestart(); Diagnostics.log(this, "ACTIVITY_ON_RESTART id=$activityInstanceId") }
     override fun onNewIntent(intent: Intent?) { super.onNewIntent(intent); Diagnostics.log(this, "ACTIVITY_ON_NEW_INTENT id=$activityInstanceId flags=${intent?.flags}") }
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) { super.onConfigurationChanged(newConfig); Diagnostics.log(this, "ACTIVITY_CONFIGURATION_CHANGED id=$activityInstanceId orientation=${newConfig.orientation} densityDpi=${newConfig.densityDpi} screen=${newConfig.screenWidthDp}x${newConfig.screenHeightDp}") }
