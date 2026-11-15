@@ -38,31 +38,29 @@ jobs:
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
 
-      # Configure all four MIREAR_* repository Actions secrets to sign every
-      # build with one persistent key. Without them, use the runner debug key.
-      - name: Sign APK with persistent MiRear key
-        if: ${{ secrets.MIREAR_KEYSTORE_BASE64 != '' }}
+      - name: Sign APK with persistent MiRear key (when configured)
         env:
           MIREAR_KEYSTORE_BASE64: ${{ secrets.MIREAR_KEYSTORE_BASE64 }}
           MIREAR_STORE_PASSWORD: ${{ secrets.MIREAR_STORE_PASSWORD }}
           MIREAR_KEY_ALIAS: ${{ secrets.MIREAR_KEY_ALIAS }}
           MIREAR_KEY_PASSWORD: ${{ secrets.MIREAR_KEY_PASSWORD }}
         run: |
-          echo "$MIREAR_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/mirear-release.jks"
           APK="app/build/outputs/apk/debug/app-debug.apk"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign \
-            --ks "$RUNNER_TEMP/mirear-release.jks" \
-            --ks-key-alias "$MIREAR_KEY_ALIAS" \
-            --ks-pass env:MIREAR_STORE_PASSWORD \
-            --key-pass env:MIREAR_KEY_PASSWORD \
-            --out "$RUNNER_TEMP/MiRear-debug-signed.apk" "$APK"
-          mv "$RUNNER_TEMP/MiRear-debug-signed.apk" "$APK"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$APK"
-          rm -f "$RUNNER_TEMP/mirear-release.jks"
-
-      - name: Warn when persistent signing is not configured
-        if: ${{ secrets.MIREAR_KEYSTORE_BASE64 == '' }}
-        run: echo "::warning::Persistent signing is not configured. APK updates may require uninstalling the previous build."
+          if [ -n "$MIREAR_KEYSTORE_BASE64" ]; then
+            echo "$MIREAR_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/mirear-release.jks"
+            "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign \
+              --ks "$RUNNER_TEMP/mirear-release.jks" \
+              --ks-key-alias "$MIREAR_KEY_ALIAS" \
+              --ks-pass env:MIREAR_STORE_PASSWORD \
+              --key-pass env:MIREAR_KEY_PASSWORD \
+              --out "$RUNNER_TEMP/MiRear-debug-signed.apk" "$APK"
+            mv "$RUNNER_TEMP/MiRear-debug-signed.apk" "$APK"
+            "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$APK"
+            rm -f "$RUNNER_TEMP/mirear-release.jks"
+            echo "APK signed with the persistent MiRear key."
+          else
+            echo "::warning::Persistent signing is not configured. APK updates may require uninstalling the previous build."
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
