@@ -177,7 +177,9 @@ class MainActivity : Activity() {
                 maxFrameMs = 0.0
             }
         }
-        window.addOnFrameMetricsAvailableListener(frameListener, Handler(Looper.getMainLooper()))
+        frameListener?.let { listener ->
+            window.addOnFrameMetricsAvailableListener(listener, Handler(Looper.getMainLooper()))
+        }
     }
 
     private fun shareDiagnostics() {
