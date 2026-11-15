@@ -5,6 +5,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.ComponentName
+import android.content.ServiceConnection
+import android.os.IBinder
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -26,6 +29,20 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
     private lateinit var message: TextView
     private lateinit var surfaceView: SurfaceView
     private var receiverRegistered = false
+    private var mirrorService: ScreenMirrorService? = null
+    private var serviceBound = false
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+            val local = binder as? ScreenMirrorService.LocalBinder ?: return
+            mirrorService = local.service()
+            Diagnostics.log(this@RearTestActivity, "SERVICE_BOUND activity=$activityInstanceId active=${mirrorService?.isCaptureActive()}")
+            if (::surfaceView.isInitialized && surfaceView.holder.surface.isValid) mirrorService?.attachSurface(surfaceView.holder.surface)
+        }
+        override fun onServiceDisconnected(name: ComponentName?) {
+            Diagnostics.log(this@RearTestActivity, "SERVICE_DISCONNECTED activity=$activityInstanceId")
+            mirrorService = null
+        }
+    }
     private var mirrorWidth = DEFAULT_WIDTH
     private var mirrorHeight = DEFAULT_HEIGHT
 
@@ -96,7 +113,11 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
         (getSystemService(DISPLAY_SERVICE) as android.hardware.display.DisplayManager).registerDisplayListener(displayListener, android.os.Handler(mainLooper))
     }
 
-    override fun onStart() { super.onStart(); Diagnostics.log(this, "ACTIVITY_ON_START id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations") }
+    override fun onStart() {
+        super.onStart()
+        Diagnostics.log(this, "ACTIVITY_ON_START id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations")
+        bindMirrorService()
+    }
     override fun onResume() { super.onResume(); Diagnostics.log(this, "ACTIVITY_ON_RESUME id=$activityInstanceId displayId=${window.decorView.display?.displayId} serviceStarted=$serviceStarted surfaceValid=${::surfaceView.isInitialized && surfaceView.holder.surface.isValid}") }
     override fun onPause() { Diagnostics.log(this, "ACTIVITY_ON_PAUSE id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations"); super.onPause() }
     override fun onStop() { Diagnostics.log(this, "ACTIVITY_ON_STOP id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations"); super.onStop() }
@@ -119,21 +140,31 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
     override fun surfaceCreated(holder: SurfaceHolder) {
         Diagnostics.log(this, "SURFACE_CREATED activity=$activityInstanceId valid=${holder.surface.isValid} view=${surfaceView.width}x${surfaceView.height} buffer=${mirrorWidth}x${mirrorHeight}")
         holder.setFixedSize(mirrorWidth, mirrorHeight)
-        startMirror(holder.surface)
+        if (captureData != null) startMirror() else mirrorService?.attachSurface(holder.surface)
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
         Diagnostics.log(this, "SURFACE_CHANGED activity=$activityInstanceId format=$format view=${width}x${height} buffer=${mirrorWidth}x${mirrorHeight}")
-        if (!serviceStarted) startMirror(holder.surface)
+        if (captureData != null && !serviceStarted) startMirror() else if (holder.surface.isValid) mirrorService?.attachSurface(holder.surface)
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
         Diagnostics.log(this, "SURFACE_DESTROYED activity=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations")
-        stopMirrorService()
+        mirrorService?.detachSurface(holder.surface)
     }
 
-    private fun startMirror(surface: Surface) {
-        if (serviceStarted || captureData == null || !surface.isValid) return
+    private fun bindMirrorService() {
+        if (serviceBound) return
+        try {
+            serviceBound = bindService(Intent(this, ScreenMirrorService::class.java), serviceConnection, Context.BIND_AUTO_CREATE)
+            Diagnostics.log(this, "SERVICE_BIND_REQUEST result=$serviceBound")
+        } catch (error: Exception) {
+            Diagnostics.log(this, "SERVICE_BIND_EXCEPTION ${error.javaClass.name}: ${error.message}")
+        }
+    }
+
+    private fun startMirror() {
+        if (serviceStarted || captureData == null) return
 
         val display = window.decorView.display
         val metrics = android.util.DisplayMetrics()
@@ -144,7 +175,6 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
         val serviceIntent = Intent(this, ScreenMirrorService::class.java).apply {
             putExtra(ScreenMirrorService.EXTRA_CAPTURE_CODE, captureCode)
             putExtra(ScreenMirrorService.EXTRA_CAPTURE_DATA, captureData)
-            putExtra(ScreenMirrorService.EXTRA_SURFACE, surface)
             putExtra(ScreenMirrorService.EXTRA_WIDTH, mirrorWidth)
             putExtra(ScreenMirrorService.EXTRA_HEIGHT, mirrorHeight)
             putExtra(ScreenMirrorService.EXTRA_DENSITY_DPI, densityDpi)
@@ -154,6 +184,7 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(serviceIntent)
             else startService(serviceIntent)
             serviceStarted = true
+            bindMirrorService()
             message.text = "MiRear\n\nSTARTING MIRROR…\n\n${mirrorWidth} × ${mirrorHeight}"
             message.visibility = android.view.View.VISIBLE
         } catch (error: Exception) {
@@ -165,17 +196,21 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
         }
     }
 
-    private fun stopMirrorService() {
-        if (!serviceStarted) return
-        stopService(Intent(this, ScreenMirrorService::class.java))
-        serviceStarted = false
+    override fun onStop() {
+        Diagnostics.log(this, "ACTIVITY_ON_STOP id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations")
+        if (serviceBound) {
+            try { unbindService(serviceConnection) } catch (_: Exception) {}
+            serviceBound = false
+            mirrorService = null
+        }
+        super.onStop()
     }
 
     override fun onDestroy() {
         Diagnostics.log(this, "ACTIVITY_ON_DESTROY id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations serviceStarted=$serviceStarted")
         (getSystemService(DISPLAY_SERVICE) as android.hardware.display.DisplayManager).unregisterDisplayListener(displayListener)
         if (receiverRegistered) unregisterReceiver(statusReceiver)
-        stopMirrorService()
+        Diagnostics.log(this, "ACTIVITY_DESTROY_NO_SERVICE_STOP id=$activityInstanceId")
         super.onDestroy()
     }
 
