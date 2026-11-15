@@ -10,6 +10,7 @@ import android.view.*
 import android.widget.*
 
 class MainActivity : Activity() {
+    private val activityInstanceId = java.util.UUID.randomUUID().toString().take(8)
     private val dm by lazy { getSystemService(DISPLAY_SERVICE) as DisplayManager }
     private val pm by lazy { getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager }
     private lateinit var report: TextView
@@ -21,6 +22,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Diagnostics.log(this, "MAIN_ON_CREATE id=$activityInstanceId taskId=$taskId savedState=${savedInstanceState != null}")
         window.statusBarColor = Color.rgb(8, 10, 20)
         window.navigationBarColor = Color.BLACK
         val root = LinearLayout(this).apply {
@@ -47,7 +49,7 @@ class MainActivity : Activity() {
 
         content.addView(label("MI REAR DISPLAY", 13f, Color.CYAN, true))
         content.addView(label("MiRear", 36f, Color.WHITE, true))
-        content.addView(label("SCREEN MIRRORING • 0.7.6 DIAGNOSTICS", 12f, 0xffb74cff.toInt(), true))
+        content.addView(label("SCREEN MIRRORING • 0.7.8 LIFECYCLE DIAGNOSTICS", 12f, 0xffb74cff.toInt(), true))
         status = label("Ready. Turn on the rear display and start mirroring.", 15f, Color.WHITE)
         content.addView(status)
         content.addView(button("START SCREEN MIRRORING") { startCapture() })
@@ -75,8 +77,17 @@ class MainActivity : Activity() {
         setContentView(root)
         scan()
         installFrameDiagnostics()
-        Diagnostics.log(this, "APP_STARTED sdk=${Build.VERSION.SDK_INT} device=${Build.MANUFACTURER} ${Build.MODEL} version=0.7.6")
+        Diagnostics.log(this, "APP_STARTED sdk=${Build.VERSION.SDK_INT} device=${Build.MANUFACTURER} ${Build.MODEL} version=0.7.8")
     }
+
+
+    override fun onStart() { super.onStart(); Diagnostics.log(this, "MAIN_ON_START id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations") }
+    override fun onResume() { super.onResume(); Diagnostics.log(this, "MAIN_ON_RESUME id=$activityInstanceId displayId=${window.decorView.display?.displayId}") }
+    override fun onPause() { Diagnostics.log(this, "MAIN_ON_PAUSE id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations"); super.onPause() }
+    override fun onStop() { Diagnostics.log(this, "MAIN_ON_STOP id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations"); super.onStop() }
+    override fun onRestart() { super.onRestart(); Diagnostics.log(this, "MAIN_ON_RESTART id=$activityInstanceId") }
+    override fun onNewIntent(intent: Intent?) { super.onNewIntent(intent); Diagnostics.log(this, "MAIN_ON_NEW_INTENT id=$activityInstanceId flags=${intent?.flags}") }
+    override fun onDestroy() { Diagnostics.log(this, "MAIN_ON_DESTROY id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations"); frameListener?.let { window.removeOnFrameMetricsAvailableListener(it) }; super.onDestroy() }
 
     private fun rear() = dm.displays.firstOrNull {
         it.displayId != 0 && it.mode.physicalWidth <= 300 && it.mode.physicalHeight <= 500
