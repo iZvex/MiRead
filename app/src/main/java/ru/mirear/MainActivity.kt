@@ -19,6 +19,25 @@ class MainActivity : Activity() {
     private var frameSamples = 0
     private var jankyFrames = 0
     private var maxFrameMs = 0.0
+    private var pendingCaptureCheck = false
+    private val mirrorServiceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+            val service = (binder as? ScreenMirrorService.LocalBinder)?.service()
+            val active = service?.isCaptureActive() == true
+            Diagnostics.log(this@MainActivity, "MAIN_CAPTURE_SERVICE_CHECK active=$active")
+            try { unbindService(this) } catch (_: Exception) {}
+            if (pendingCaptureCheck) {
+                pendingCaptureCheck = false
+                if (active) {
+                    status.text = "Existing mirror session found. Reopening rear display…"
+                    openRear(null, null)
+                } else requestCapturePermission()
+            }
+        }
+        override fun onServiceDisconnected(name: ComponentName?) {
+            Diagnostics.log(this@MainActivity, "MAIN_CAPTURE_SERVICE_DISCONNECTED")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
