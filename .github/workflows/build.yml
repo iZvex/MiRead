@@ -26,11 +26,13 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      # GitHub-hosted Ubuntu runners already provide Android command-line tools.
-      # Avoid setup-android's legacy "tools" package installation.
+      - name: Set up Android SDK command-line tools
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+
       - name: Install Android SDK components
         run: |
-          yes | sdkmanager --licenses
           sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build debug APK
