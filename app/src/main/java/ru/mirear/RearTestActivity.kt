@@ -20,12 +20,16 @@ class RearTestActivity:Activity(),SurfaceHolder.Callback{
   message=TextView(this).apply{text="MiRear\n\nREAR DISPLAY READY";textSize=14f;gravity=Gravity.CENTER;setTextColor(Color.CYAN);setBackgroundColor(0x99000000.toInt())}
   root.addView(message,FrameLayout.LayoutParams(-1,-1));setContentView(root)
  }
- override fun surfaceCreated(h:SurfaceHolder){startMirror(h.surface)}
- override fun surfaceChanged(h:SurfaceHolder,f:Int,w:Int,hg:Int){if(!started)startMirror(h.surface)}
- override fun surfaceDestroyed(h:SurfaceHolder){stopService(Intent(this,ScreenMirrorService::class.java));started=false}
- private fun startMirror(s:Surface){if(started||resultData==null||!s.isValid)return
-  val w=window.decorView.width.coerceAtLeast(1);val h=window.decorView.height.coerceAtLeast(1)
+ override fun surfaceCreated(holder:SurfaceHolder){startMirror(holder)}
+ override fun surfaceChanged(holder:SurfaceHolder,f:Int,w:Int,h:Int){if(!started)startMirror(holder)}
+ override fun surfaceDestroyed(holder:SurfaceHolder){stopService(Intent(this,ScreenMirrorService::class.java));started=false}
+ private fun startMirror(holder:SurfaceHolder){
+  val s=holder.surface
+  if(started||resultData==null||!s.isValid)return
+  val frame=holder.surfaceFrame
+  val w=frame.width().coerceAtLeast(1);val h=frame.height().coerceAtLeast(1)
   val i=Intent(this,ScreenMirrorService::class.java).apply{putExtra("capture_code",resultCode);putExtra("capture_data",resultData);putExtra("out_surface",s);putExtra("out_width",w);putExtra("out_height",h)}
-  try{if(Build.VERSION.SDK_INT>=26)startForegroundService(i)else startService(i);started=true;message.text="MiRear\n\nSTARTING MIRROR…"}catch(e:Exception){message.text="MIRROR ERROR\n${e.javaClass.simpleName}: ${e.message}"}
+  try{if(Build.VERSION.SDK_INT>=26)startForegroundService(i)else startService(i);started=true;message.visibility=View.GONE}
+  catch(e:Exception){message.text="MIRROR ERROR\n${e.javaClass.simpleName}: ${e.message}"}
  }
 }
