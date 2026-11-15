@@ -74,7 +74,7 @@ class MainActivity : Activity() {
         content.addView(button("START SCREEN MIRRORING") { startCapture() })
         content.addView(button("STOP MIRRORING") {
             val stopIntent = Intent(this, ScreenMirrorService::class.java).setAction(ScreenMirrorService.ACTION_STOP)
-            if (Build.VERSION.SDK_INT >= 26) startForegroundService(stopIntent) else startService(stopIntent)
+            startService(stopIntent)
             status.text = "Stop requested."
             Diagnostics.log(this, "USER_REQUESTED_STOP source=main_button")
         })
