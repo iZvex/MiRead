@@ -48,6 +48,7 @@ class ScreenMirrorService : Service() {
         val resultCode = intent.getIntExtra(EXTRA_CAPTURE_CODE, 0)
         val width = intent.getIntExtra(EXTRA_WIDTH, 126).coerceAtLeast(1)
         val height = intent.getIntExtra(EXTRA_HEIGHT, 294).coerceAtLeast(1)
+        val densityDpi = intent.getIntExtra(EXTRA_DENSITY_DPI, 160).coerceAtLeast(1)
         if (captureData == null || surface == null || !surface.isValid) {
             report("ERROR", "Capture data or rear display surface is invalid.")
             stopSelf()
@@ -77,7 +78,7 @@ class ScreenMirrorService : Service() {
                 "MiRear-Mirror",
                 width,
                 height,
-                resources.displayMetrics.densityDpi,
+                densityDpi,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 surface,
                 null,
@@ -152,6 +153,7 @@ class ScreenMirrorService : Service() {
         const val EXTRA_SURFACE = "out_surface"
         const val EXTRA_WIDTH = "out_width"
         const val EXTRA_HEIGHT = "out_height"
+        const val EXTRA_DENSITY_DPI = "out_density_dpi"
         const val EXTRA_STATE = "state"
         const val EXTRA_DETAIL = "detail"
     }
