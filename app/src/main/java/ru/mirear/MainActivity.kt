@@ -68,14 +68,15 @@ class MainActivity : Activity() {
 
         content.addView(label("MI REAR DISPLAY", 13f, Color.CYAN, true))
         content.addView(label("MiRear", 36f, Color.WHITE, true))
-        content.addView(label("SCREEN MIRRORING • 0.7.8 LIFECYCLE DIAGNOSTICS", 12f, 0xffb74cff.toInt(), true))
+        content.addView(label("SCREEN MIRRORING • 0.8.0 PERSISTENT CAPTURE", 12f, 0xffb74cff.toInt(), true))
         status = label("Ready. Turn on the rear display and start mirroring.", 15f, Color.WHITE)
         content.addView(status)
         content.addView(button("START SCREEN MIRRORING") { startCapture() })
         content.addView(button("STOP MIRRORING") {
-            stopService(Intent(this, ScreenMirrorService::class.java))
+            val stopIntent = Intent(this, ScreenMirrorService::class.java).setAction(ScreenMirrorService.ACTION_STOP)
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(stopIntent) else startService(stopIntent)
             status.text = "Stop requested."
-            Diagnostics.log(this, "USER_REQUESTED_STOP")
+            Diagnostics.log(this, "USER_REQUESTED_STOP source=main_button")
         })
         content.addView(button("OPEN REAR TEST") { openRear(null, null) })
         content.addView(label("DISPLAY DIAGNOSTICS", 13f, Color.CYAN, true))
@@ -96,7 +97,7 @@ class MainActivity : Activity() {
         setContentView(root)
         scan()
         installFrameDiagnostics()
-        Diagnostics.log(this, "APP_STARTED sdk=${Build.VERSION.SDK_INT} device=${Build.MANUFACTURER} ${Build.MODEL} version=0.7.8")
+        Diagnostics.log(this, "APP_STARTED sdk=${Build.VERSION.SDK_INT} device=${Build.MANUFACTURER} ${Build.MODEL} version=0.8.0")
     }
 
 
@@ -116,6 +117,16 @@ class MainActivity : Activity() {
             status.text = "Rear display not found. Scan displays."
             return
         }
+        pendingCaptureCheck = true
+        val bound = bindService(Intent(this, ScreenMirrorService::class.java), mirrorServiceConnection, Context.BIND_AUTO_CREATE)
+        Diagnostics.log(this, "MAIN_CAPTURE_SERVICE_BIND_REQUEST result=$bound")
+        if (!bound) {
+            pendingCaptureCheck = false
+            requestCapturePermission()
+        }
+    }
+
+    private fun requestCapturePermission() {
         Diagnostics.log(this, "USER_REQUESTED_CAPTURE")
         @Suppress("DEPRECATION")
         startActivityForResult(pm.createScreenCaptureIntent(), 77)
