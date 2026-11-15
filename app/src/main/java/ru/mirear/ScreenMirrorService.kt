@@ -31,6 +31,8 @@ class ScreenMirrorService : Service() {
 
     override fun onBind(intent: Intent?): IBinder = binder
 
+    fun isCaptureActive(): Boolean = projection != null && virtualDisplay != null
+
     fun attachSurface(surface: Surface) {
         if (!surface.isValid) {
             Diagnostics.log(this, "SURFACE_ATTACH_REJECTED invalid=true")
