@@ -74,6 +74,12 @@ class ScreenMirrorService : Service() {
                 }
             }, Handler(Looper.getMainLooper()))
 
+            // Hint the compositor that the rear-panel output is a 60 Hz stream.
+            // This does not request a refresh-rate change for the primary display.
+            if (Build.VERSION.SDK_INT >= 30) {
+                surface.setFrameRate(60f, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE)
+            }
+
             virtualDisplay = activeProjection.createVirtualDisplay(
                 "MiRear-Mirror",
                 width,
