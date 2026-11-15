@@ -87,7 +87,6 @@ class MainActivity : Activity() {
     override fun onStop() { Diagnostics.log(this, "MAIN_ON_STOP id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations"); super.onStop() }
     override fun onRestart() { super.onRestart(); Diagnostics.log(this, "MAIN_ON_RESTART id=$activityInstanceId") }
     override fun onNewIntent(intent: Intent?) { super.onNewIntent(intent); Diagnostics.log(this, "MAIN_ON_NEW_INTENT id=$activityInstanceId flags=${intent?.flags}") }
-    override fun onDestroy() { Diagnostics.log(this, "MAIN_ON_DESTROY id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations"); frameListener?.let { window.removeOnFrameMetricsAvailableListener(it) }; super.onDestroy() }
 
     private fun rear() = dm.displays.firstOrNull {
         it.displayId != 0 && it.mode.physicalWidth <= 300 && it.mode.physicalHeight <= 500
@@ -204,6 +203,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        Diagnostics.log(this, "MAIN_ON_DESTROY id=$activityInstanceId finishing=$isFinishing changingConfig=$isChangingConfigurations")
         frameListener?.let { window.removeOnFrameMetricsAvailableListener(it) }
         super.onDestroy()
     }
