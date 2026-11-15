@@ -21,7 +21,7 @@ class MainActivity: Activity() {
   fun label(s:String,size:Float,color:Int,bold:Boolean=false)=TextView(this).apply { text=s; textSize=size; setTextColor(color); if(bold)setTypeface(typeface,1); setPadding(0,8,0,8) }
   fun button(s:String, f:()->Unit)=Button(this).apply { text=s; setTextColor(Color.CYAN); setOnClickListener{f()} }
   c.addView(label("MI REAR DISPLAY",13f,Color.CYAN,true)); c.addView(label("MiRear",36f,Color.WHITE,true))
-  c.addView(label("SCREEN MIRRORING • 0.6.0",12f,0xffb74cff.toInt(),true))
+  c.addView(label("SCREEN MIRRORING • 0.7.0",12f,0xffb74cff.toInt(),true))
   status=label("Ready. Turn on the rear display and start mirroring.",15f,Color.WHITE)
   c.addView(status)
   c.addView(button("START SCREEN MIRRORING"){ startCapture() })
