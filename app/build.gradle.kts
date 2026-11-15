@@ -2,7 +2,7 @@ plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 android {
  namespace="ru.mirear"
  compileSdk=35
- defaultConfig { applicationId="ru.mirear"; minSdk=26; targetSdk=33; versionCode=15; versionName="0.7.8-lifecycle-diagnostics" }
+ defaultConfig { applicationId="ru.mirear"; minSdk=26; targetSdk=33; versionCode=16; versionName="0.7.9-lifecycle-diagnostics" }
  compileOptions { sourceCompatibility=JavaVersion.VERSION_17; targetCompatibility=JavaVersion.VERSION_17 }
  kotlinOptions { jvmTarget="17" }
 }
