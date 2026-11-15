@@ -14,6 +14,10 @@ class MainActivity: Activity() {
  private val pm by lazy { getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager }
  private lateinit var report: TextView
  private lateinit var status: TextView
+ private var frameListener: Window.OnFrameMetricsAvailableListener? = null
+ private var frameSamples = 0
+ private var jankyFrames = 0
+ private var maxFrameMs = 0.0
  override fun onCreate(savedInstanceState: Bundle?) {
   super.onCreate(savedInstanceState); window.statusBarColor=Color.rgb(8,10,20); window.navigationBarColor=Color.BLACK
   val root=LinearLayout(this).apply { orientation=1; setPadding(22,28,22,24); setBackgroundColor(Color.rgb(8,10,20)) }
@@ -30,8 +34,12 @@ class MainActivity: Activity() {
   c.addView(label("DISPLAY DIAGNOSTICS",13f,Color.CYAN,true))
   report=label("",14f,Color.WHITE); c.addView(report)
   c.addView(button("SCAN DISPLAYS"){scan()})
+  c.addView(button("EXPORT DIAGNOSTICS"){shareDiagnostics()})
+  c.addView(button("CLEAR DIAGNOSTICS"){Diagnostics.clear(this); status.text="Diagnostics cleared."})
   c.addView(label("Android will ask permission to capture the screen. A persistent system notification appears during mirroring.",13f,0xff9ba5be.toInt()))
   scroll.addView(c); root.addView(scroll); setContentView(root); scan()
+  installFrameDiagnostics()
+  Diagnostics.log(this, "APP_STARTED sdk=${Build.VERSION.SDK_INT} model=${Build.MANUFACTURER} ${Build.MODEL} appVersion=0.7.6")
  }
  private fun rear()=dm.displays.firstOrNull{it.displayId!=0 && it.mode.physicalWidth<=300 && it.mode.physicalHeight<=500} ?: dm.displays.firstOrNull{it.displayId!=0}
  private fun startCapture(){ if(rear()==null){status.text="Rear display not found. Scan displays.";return}; @Suppress("DEPRECATION") startActivityForResult(pm.createScreenCaptureIntent(),77) }
