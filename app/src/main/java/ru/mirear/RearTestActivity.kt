@@ -64,7 +64,7 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
-        startMirror(holder.surface)
+        startMirror(holder)
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
@@ -75,7 +75,8 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
         stopMirrorService()
     }
 
-    private fun startMirror(surface: Surface) {
+    private fun startMirror(holder: SurfaceHolder) {
+        val surface = holder.surface
         if (serviceStarted || captureData == null || !surface.isValid) return
         val rearDisplay = window.decorView.display
         val mode = rearDisplay?.mode
@@ -84,7 +85,8 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
         val rearMetrics = DisplayMetrics()
         rearDisplay?.getRealMetrics(rearMetrics)
         val densityDpi = rearMetrics.densityDpi.takeIf { it > 0 } ?: resources.displayMetrics.densityDpi
-        holderSizeHint(surface, width, height)
+        holder.setFixedSize(width, height)
+        holderSizeHint(surface)
         val serviceIntent = Intent(this, ScreenMirrorService::class.java).apply {
             putExtra(ScreenMirrorService.EXTRA_CAPTURE_CODE, captureCode)
             putExtra(ScreenMirrorService.EXTRA_CAPTURE_DATA, captureData)
@@ -103,7 +105,7 @@ class RearTestActivity : Activity(), SurfaceHolder.Callback {
         }
     }
 
-    private fun holderSizeHint(surface: Surface, width: Int, height: Int) {
+    private fun holderSizeHint(surface: Surface) {
         try {
             surface.setFrameRate(30f, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE)
         } catch (_: Exception) { }
